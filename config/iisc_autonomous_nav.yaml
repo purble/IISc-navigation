@@ -1,0 +1,7 @@
+#############################################################################
+##### Overall state- 0: landing, 1: road following, 2: fiducial turning #####
+#############################################################################
+nav_state: 1
+
+# Global parameter for communication to road following node once go straight slow once landing fiducial is detected
+landing_fiducial_detected: False

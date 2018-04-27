@@ -1,0 +1,44 @@
+###################
+##### Landing #####
+###################
+landingpad_detected_list_size: 30
+landingpad_detection_thresh: 6
+landingpad_notinFOV_thresh: 3
+landed: False
+
+landingWithFiducial: True
+landingpad_fiducial_id: 17
+# landing_fiducial_detected: False # later to be enabled once service by iisc_bebop_nav is created, now in global namespace
+landingpad_fiducial_detected_list_size: 80
+landingpad_fiducial_detected_thresh: 0
+
+landingpad_detect_hover_count: 10
+
+cam_tilt_pad_detection: -25.0
+
+# color thresholds in HSV space
+lower_red1: [165,40,40]
+upper_red1: [180,255,255]
+
+lower_red2: [0,40,40]
+upper_red2: [10,255,255]
+
+lower_blue: [90,40,40]
+upper_blue: [135,255,255]
+
+lower_green: [30,40,40]
+upper_green: [85,255,255]
+
+# landing pad colors
+landingpad_background_color: 'red' # red, green, blue
+landingpad_centre_color: 'blue' # red, green, blue
+
+# PID controller
+err_x: 0.0
+x_thresh: 10
+i_log_len: 5
+kp: 0.0001
+kd: 0.01
+ki: 0.00001
+roll_cap: 0.1 # 0.05, 0.2
+fw_vel: 0.04

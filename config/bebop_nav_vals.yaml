@@ -1,0 +1,12 @@
+#######################################
+##### Bebop navigation parameters #####
+#######################################
+
+gostraight_val: 0.4
+gostraight_slow_val: 0.1
+turnleft_val: 0.2
+turnright_val: -0.2
+goup_val: 0.2
+godown_val: -0.2
+goleft_val: 0.15 # Confirm the sign
+goright_val: -0.15 # Confirm the sign
