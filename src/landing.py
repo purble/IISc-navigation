@@ -45,6 +45,16 @@ class landing(object):
 			# Initialize landing pad marker detection history list
 			self.landingpad_fiducial_detected_list = [0]*rospy.get_param('/iisc_landing/landingpad_fiducial_detected_list_size')
 
+		# Set camera view to horizontal
+		# self.action_pub.publish(self.msg_gen('Cam', [0.0] * 6))
+
+	### Initiate Landing ###
+
+	def initiate_landing_procedure(self):
+		self.action_pub.publish(self.msg_gen('Land', [0.0] * 6))
+		self.action_pub.publish(self.msg_gen('Cam', [0.0] * 6))
+		rospy.set_param('/iisc_landing/landed', True)
+
 	### image_callback and it's utility functions
 
 	def image_callback(self, data):
@@ -103,15 +113,16 @@ class landing(object):
 				self.action_pub.publish(self.msg_gen('Hover', [0.0] * 6))
 				self.update_landingpad_detect_hover_count()
 			else:
-
 				cmd = self.pid_controller.eval_actuation()
 				self.action_pub.publish(cmd)
 
 			if sum(self.pad_detected_list) < rospy.get_param('/iisc_landing/landingpad_notinFOV_thresh'):
-				self.action_pub.publish(self.msg_gen('Land', [0.0] * 6))
-				self.action_pub.publish(self.msg_gen('Cam', [0.0] * 6))
-				rospy.set_param('/iisc_landing/landed', True)
-
+				if rospy.get_param('/iisc_landing/distance2Lmarker') < rospy.get_param('/iisc_landing/landing_max_dist_thresh'): # If distance closer than landing_thresh_high then land
+					self.initiate_landing_procedure()
+				else: # Refill the landing list
+					self.pad_detected_list = [1]*rospy.get_param('/iisc_landing/landingpad_fiducial_detected_list_size')
+			elif rospy.get_param('/iisc_landing/distance2Lmarker') < rospy.get_param('/iisc_landing/landing_min_dist_thresh'): # If distance closer than landing_thresh_low then land
+				self.initiate_landing_procedure()
 		else:
 			# If pad has been enough number of times, set 'nav_state' parameter to 0
 			if sum(self.pad_detected_list) > rospy.get_param('/iisc_landing/landingpad_detection_thresh'):
@@ -142,23 +153,28 @@ class landing(object):
 	### Fiducial_callback and it's utility functions
 
 	def fiducial_callback(self, data):
+
+		for marker in data.markers:
+			cur_id = marker.id
 		
-		# If already landingpad fiducial detected, return
-		if rospy.get_param('/landing_fiducial_detected'): return
+			# Update the 'distance2Lmarker' rosparam
+			if cur_id == rospy.get_param('/iisc_landing/landingpad_fiducial_id'):
+				rospy.set_param('/iisc_landing/distance2Lmarker', marker.pose.pose.position.z)
 
-		# Else, update landing fiducial detected list
-		if (len(data.markers)>0) and (data.markers[0].id == rospy.get_param('/iisc_landing/landingpad_fiducial_id')):
-			self.landingpad_fiducial_detected_list = self.update_list(self.landingpad_fiducial_detected_list, [1])
-		else:
-			self.landingpad_fiducial_detected_list = self.update_list(self.landingpad_fiducial_detected_list, [0])
+			# If already landingpad fiducial detected, return
+			if rospy.get_param('/landing_fiducial_detected'): return
 
-		''' If number of positive detections has crossed the threshold, set landing_fiducial_detected to True
-			Road following speed will decrease once 'landing_fiducial_detected' is set to True
-		'''
-		if sum(self.landingpad_fiducial_detected_list)>rospy.get_param('/iisc_landing/landingpad_fiducial_detected_thresh'):
-			rospy.set_param('landing_fiducial_detected', True)
-			## instead call for iisc_bebop_nav service to switch to slower move ahead speed
-		return
+			# Else, update landing fiducial detected list
+			if cur_id == rospy.get_param('/iisc_landing/landingpad_fiducial_id'):
+				self.landingpad_fiducial_detected_list = self.update_list(self.landingpad_fiducial_detected_list, [1])
+
+				''' If number of positive detections has crossed the threshold, set landing_fiducial_detected to True
+					Road following speed will decrease once 'landing_fiducial_detected' is set to True
+				'''
+				if sum(self.landingpad_fiducial_detected_list)>rospy.get_param('/iisc_landing/landingpad_fiducial_detected_thresh'):
+					rospy.set_param('landing_fiducial_detected', True)
+					## instead call for iisc_bebop_nav service to switch to slower move ahead speed, to be updated later
+			return
 
 	def update_list(self, lst, val):
 		lst.pop()

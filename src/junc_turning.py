@@ -88,14 +88,15 @@ class juncTurn(object):
 
 		# If landing or rotating then ignore the fiducial markers
 		if rospy.get_param('/nav_state') == 0 or self.rotate: return
-
 		# Otherwise check if any pad in the self.pad_ids list is detected in current view
 
 		# Check if any marker is detected
-		if  len(data.markers)>0:
+		if  len(data.markers)>0: # I think this is redundant since there will be no callback in the absence of any data
 			for marker in data.markers:
 				cur_id = marker.id
+				print("hello0")
 				if cur_id in self.pad_ids and cur_id not in self.done_pad_ids:
+					print("hello1")
 					
 					if self.robust_detection():
 
@@ -113,8 +114,11 @@ class juncTurn(object):
 							else:
 								self.turnL = True
 						elif self.goSt:
+							print("hello4")
 							msg = self.msg_pub('GoStraight', [0.0]*6)
 						elif cur_dist < self.pad_dist_det[self.idx]:
+							print("hello5")
+							rospy.set_param('/nav_state', 2)
 							self.goSt = True
 
 					break
@@ -129,7 +133,6 @@ class juncTurn(object):
 			self.junctionTurning_fiducial_detected_list.pop()
 			self.junctionTurning_fiducial_detected_list = [1] + self.junctionTurning_fiducial_detected_list
 			if sum(self.junctionTurning_fiducial_detected_list) > self.junctionTurning_fiducial_detection_thresh:
-				rospy.set_param('/nav_state', 2)
 				return True
 			else:
 				return False
@@ -156,7 +159,7 @@ class juncTurn(object):
 			self.rotate = False
 		elif (ulim_yaw > 1.0):
 			if (cur_yaw < 0.0): cur_yaw = 2 - cur_yaw
-			if (cur_yaw < llim_yaw) and (cur_yaw > llim_yaw):
+			if (cur_yaw < ulim_yaw) and (cur_yaw > llim_yaw):
 				self.rotate = False
 		elif (llim_yaw < -1.0): # (rot < ulim) will anyways hold true, since rot = [-1,1]
 			if (cur_yaw > 0.0): cur_yaw = -2 + cur_yaw

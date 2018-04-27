@@ -1,0 +1,2 @@
+model_checkpoint_path: "rf_iisc_Dronet-33702"
+all_model_checkpoint_paths: "rf_iisc_Dronet-33702"

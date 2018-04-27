@@ -12,9 +12,13 @@ landingpad_fiducial_id: 17
 landingpad_fiducial_detected_list_size: 80
 landingpad_fiducial_detected_thresh: 0
 
+distance2Lmarker: 1000.0
+landing_max_dist_thresh: 5.0
+landing_min_dist_thresh: 2.0
+
 landingpad_detect_hover_count: 10
 
-cam_tilt_pad_detection: -25.0
+cam_tilt_pad_detection: -20.0
 
 # color thresholds in HSV space
 lower_red1: [165,40,40]

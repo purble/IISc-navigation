@@ -2,7 +2,7 @@
 ##### Bebop navigation parameters #####
 #######################################
 
-gostraight_val: 0.4
+gostraight_val: 0.2
 gostraight_slow_val: 0.1
 turnleft_val: 0.2
 turnright_val: -0.2
