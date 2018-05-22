@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import rospy, sys, cv2
+import rospy, sys, cv2, time
 from sensor_msgs.msg import Image
 from iisc_rf.msg import CNN_logits
 from iisc_bebop_nav.msg import Bebop_cmd
@@ -40,6 +40,7 @@ class iisc_rf(object):
 		self.confusion_corr_thresh1 = rospy.get_param('/iisc_rf/confusion_corr_thresh1')
 		self.confusion_corr_thresh2 = rospy.get_param('/iisc_rf/confusion_corr_thresh2')
 		self.prev_dirn = 0
+		self.inf_rate_q = [0.0]*50
 
 	def image_callback(self, data):
 
@@ -55,8 +56,12 @@ class iisc_rf(object):
 		# Convert the BGR image to np.array in appropriate shape for feeding into the model
 		img = self.model.image_conv(cv_image)
 
+		t1 = time.time()
 		# Run inference on the model
 		logits = self.model.infer(img)
+		self.inf_rate_q.pop()
+		self.inf_rate_q = [time.time()-t1] + self.inf_rate_q
+		print(">>> ", sum(self.inf_rate_q)/50)
 
 		# Publish the logits
 		msg = CNN_logits()

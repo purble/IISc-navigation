@@ -2,7 +2,7 @@
 ##### Road following parameters #####
 #####################################
 
-model_type: 'giusti_rf' # 'iisc_rf', 'giusti_rf', 'dronet_rf'
+model_type: 'iisc_rf' # 'iisc_rf', 'giusti_rf', 'dronet_rf'
 gost_thresh: 40.0
 lr_bias: True
 dirn_history_sz: 20
