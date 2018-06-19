@@ -4,7 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 
 def get_model(model):
 	if model == 'iisc_rf':
-		from trained_models.iisc_rf.iisc_rf import *
+		from trained_models.iisc_rf.iisc_rf2 import *
 		m = iisc_rf_net()
 	elif model == 'giusti_rf':
 		from trained_models.giusti_rf.giusti_rf import *

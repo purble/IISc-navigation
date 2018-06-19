@@ -41,8 +41,13 @@ class iisc_rf(object):
 		self.confusion_corr_thresh2 = rospy.get_param('/iisc_rf/confusion_corr_thresh2')
 		self.prev_dirn = 0
 		self.inf_rate_q = [0.0]*50
+		self.time_ = time.time()
 
 	def image_callback(self, data):
+
+		print("~", time.time()-self.time_)
+		self.time_ = time.time()
+		t0 = time.time()
 
 		# If turning at junction, or landing do not follow the road
 		if rospy.get_param('/nav_state')!=1: return
@@ -93,6 +98,8 @@ class iisc_rf(object):
 			self.image_pub.publish(self.bridge.cv2_to_imgmsg(out_image, "bgr8"))
 		except CvBridgeError as e:
 			print(e)
+
+		print("~~=", time.time()-t0)
 
 	def bias_lr(self, probs, output):
 
