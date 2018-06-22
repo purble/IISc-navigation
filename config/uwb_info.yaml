@@ -1,0 +1,10 @@
+numAnchors : 3 
+
+anchor1Pos : (0.0, 0.0)
+anchor1Offset : -0.61
+
+anchor2Pos : (0.0, 6.0)
+anchor2Offset : -0.58
+
+anchor3Pos : (6.0, 6.0)
+anchor3Offset : -0.70

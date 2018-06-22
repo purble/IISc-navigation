@@ -16,14 +16,16 @@ import json
 from iisc_bebop_nav.msg import uwb_pos
 
 
-#Parameters to be otained from ROSParamServer
-anchorSigmas = [0.000803, 0.000502, 0.000487]
-anchorOffsets = [-0.61, -0.58, -0.70]
-numAnchors = 3
-anchor1Pos = (0.0, 0.0)
-anchor2Pos = (0.0, 6.0)
-anchor3Pos = (6.0, 6.0)
-wrtAnchors = [1,2,3]
+anchorOffsets[0] = rospy.get_param('/uwb_info/anchor1Offset')
+anchorOffsets[1] = rospy.get_param('/uwb_info/anchor2Offset')
+anchorOffsets[2] = rospy.get_param('/uwb_info/anchor2Offset')
+
+numAnchors = rospy.get_param('/uwb_info/numAnchors')
+anchor1Pos = rospy.get_param('/uwb_info/anchor1Pos')
+anchor2Pos = rospy.get_param('/uwb_info/anchor2Pos')
+anchor3Pos = rospy.get_param('/uwb_info/anchor3Pos')
+# Temporary addressing, unused
+wrtAnchors = [1, 2, 3]
 
 
 def uwbMsg(wrtAnchors, curr_pos):
@@ -52,8 +54,11 @@ def getPos(p1, p2, p3, r1, r2, r3):
 
 def uwb():
 
-    
-    ser = serial.Serial("/dev/ttyACM0", 576000)
+    try:
+        ser = serial.Serial("/dev/ttyACM0", 576000)
+    except:
+        print("Device unplugged")
+
     uwbPos = rospy.Publisher('uwb', uwb_pos, queue_size=10)
 
     radialPos = []
@@ -66,8 +71,7 @@ def uwb():
     radialPos = [float(i) for i in line.split(',')]
     prevRadialPos = radialPos
 
-    while(not is rospy.is_shutdown()):
-
+    while(not rospy.is_shutdown()):
         try:
             line = ser.readline()
             radialPos = [float(i) for i in line.split(',')]
@@ -76,17 +80,13 @@ def uwb():
             prevRadialPos = radialPos
             datx, daty = getPos(anchor1Pos, anchor2Pos, anchor3Pos,
                                 radialPos[0]+anchorOffsets[0], radialPos[1]+anchorOffsets[1], radialPos[2]+anchorOffsets[2])
-            uwbPos.publish(uwbMsg(wrtAnchors, [datx,daty]))
+            uwbPos.publish(uwbMsg(wrtAnchors, [datx, daty]))
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(
                 exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
-            print e
-    except ValueError:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
+            print(e)
 
 
 if __name__ == '__main__':
