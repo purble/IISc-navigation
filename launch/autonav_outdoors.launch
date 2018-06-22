@@ -22,6 +22,11 @@
         <rosparam command="load" file="$(find iisc_autonav_outdoors)/config/junction_calib.yaml" />
     </node>
 
+    <node name="uwb" pkg="iisc_autonav_outdoors" type="uwb.py" output="screen">
+	    <remap from="uwb" to="$(arg namespace)/uwb"/>
+        <rosparam command="load" file="$(find iisc_autonav_outdoors)/config/uwb_info.yaml" />
+    </node>
+
     <node name="iisc_bebop_nav" pkg="iisc_autonav_outdoors" type="bebop_nav.py" output="screen">
         <remap from="cmd" to="/$(arg namespace)/cmd_vel"/>
         <remap from="land" to="$(arg namespace)/land"/>
