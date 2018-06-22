@@ -8,9 +8,9 @@ i_yaw: 0.0005
 d_yaw: 0.001
 
 # PID parameters for control towards setpoint in xy plane
-p_xy: 0.05
-i_xy: 0.0005
-d_xy: 0.001
+p_xy: 0.065
+i_xy: 0.0
+d_xy: 0.07
 
 #####################################
 ##### Junction calibration info #####
