@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/env python
 
 import time
 import rospy
@@ -90,6 +90,7 @@ def uwb():
 
 
 if __name__ == '__main__':
+    rospy.init_node('uwb', anonymous=True)
     try:
         uwb()
     except rospy.ROSInterruptException:

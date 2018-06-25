@@ -3,14 +3,19 @@ junctionTurning_fiducial_detected_list_size: 80
 junctionTurning_fiducial_detection_thresh: 4
 
 # PID parameters for yaw control
-p_yaw: 0.05
-i_yaw: 0.0005
-d_yaw: 0.001
+yaw_p: 0.05
+yaw_i: 0.0005
+yaw_d: 0.001
+yaw_i_log_len: 6
+yaw_pid_thresh: 0.4
 
 # PID parameters for control towards setpoint in xy plane
-p_xy: 0.065
-i_xy: 0.0
-d_xy: 0.07
+xy_p: 0.065
+xy_i: 0.0
+xy_d: 0.07
+xy_i_log_len: 6
+pitch_pid_thresh: 0.4
+roll_pid_thresh: 0.4
 
 #####################################
 ##### Junction calibration info #####

@@ -14,7 +14,7 @@ add_message_files(
   Bebop_cmd.msg
   CNN_logits.msg
   RF_state.msg
-  uwb_pos.msg
+  UWB_pos.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -3,11 +3,11 @@ import rospy
 import sys
 import cv2
 from sensor_msgs.msg import Image
-from iisc_bebop_nav.msg import Bebop_cmd
+from iisc_autonav_outdoors.msg import Bebop_cmd
 from cv_bridge import CvBridge, CvBridgeError
 from ar_track_alvar_msgs.msg import AlvarMarker, AlvarMarkers
 from nav_msgs.msg import Odometry
-from iisc_bebop_nav.msg import uwb_pos
+from iisc_autonav_outdoors.msg import UWB_pos
 
 class juncTurn(object):
 
@@ -26,7 +26,7 @@ class juncTurn(object):
         self.image_sub = rospy.Subscriber("camera", Image, self.image_callback)
 
         # UWB data subscriber
-        self.uwb_sub = rospy.Subscriber("uwb", uwb_pos, self.uwb_callback)
+        self.uwb_sub = rospy.Subscriber("uwb", UWB_pos, self.uwb_callback)
 
         # Subscribe to odometry data, for turning using magnetometer
         self.odom_sub = rospy.Subscriber("odom", Odometry, self.odom_callback)
@@ -49,15 +49,15 @@ class juncTurn(object):
         self.junc_ids = [0, 1]
         # First anchor is at (0,0), second at (x,0), third at (0,y)
         self.anchor_ids = [[0, 1, 2], [3, 4, 5]]
-        self.nav_dir_ref = [[[, ], [, ], [, ]], [[, ], [, ]]]
+        self.nav_dir_ref = [[[3.2, 1.2], [0.3, 5.6], [6.7, 9.0]], [[1.2, 3.4], [5.6, 7.8]]]
         # [x,y] values for each triplet of anchors
         self.anchor_conf_side = [[4.0, 5.0], [6.0, 3.0]]
         # Start UWB based motion once close enough to first waypoint
         self.junc_dist_thresh = [[1.0, 1.0, 2.0], [1.0, 1.0]]
-        self.junc_waypoints = [[[], [], []], [[], []]]
-        self.diff_dirn_ref_yaw = [[, , ], [, ]]
-        self.junc_turning_angles = [[, , ], [, ]]
-        self.junc_calib_angles = [, ]
+        self.junc_waypoints = [[[[2.2,3.3], [3.2,1.2]], [[2.2,9.0]], [[2.3,1.2]]], [[[2.2,1.2]], [[3.3,1.2]]]]
+        self.diff_dirn_ref_yaw = [[-0.4, 0.2, 0.1], [0.5, -0.8]]
+        self.junc_turning_angles = [[0.1, 0.5, 0.9], [-0.4, 0.6]]
+        self.junc_calib_angles = [0.3, -0.1]
 
         # Active junction index, and previous junction index
         self.junc_idx = 0
@@ -337,7 +337,7 @@ class juncTurn(object):
         # Current yaw value
         self.cur_yaw = data.pose.pose.orientation.z
 
-        if not self.rotate
+        if not self.rotate: return
 
         # Target yaw value
         tar_yaw = self.junc_turning_angles[self.junc_idx][self.ref_idx]
