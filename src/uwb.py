@@ -13,23 +13,23 @@ import os
 import math
 from datetime import datetime
 import json
-from iisc_bebop_nav.msg import uwb_pos
+from iisc_autonav_outdoors.msg import UWB_pos
 
+anchorOffsets = []
+anchorOffsets.append(rospy.get_param('/uwb/anchor1Offset'))
+anchorOffsets.append(rospy.get_param('/uwb/anchor2Offset'))
+anchorOffsets.append(rospy.get_param('/uwb/anchor2Offset'))
 
-anchorOffsets[0] = rospy.get_param('/uwb_info/anchor1Offset')
-anchorOffsets[1] = rospy.get_param('/uwb_info/anchor2Offset')
-anchorOffsets[2] = rospy.get_param('/uwb_info/anchor2Offset')
-
-numAnchors = rospy.get_param('/uwb_info/numAnchors')
-anchor1Pos = rospy.get_param('/uwb_info/anchor1Pos')
-anchor2Pos = rospy.get_param('/uwb_info/anchor2Pos')
-anchor3Pos = rospy.get_param('/uwb_info/anchor3Pos')
+numAnchors = rospy.get_param('/uwb/numAnchors')
+anchor1Pos = rospy.get_param('/uwb/anchor1Pos')
+anchor2Pos = rospy.get_param('/uwb/anchor2Pos')
+anchor3Pos = rospy.get_param('/uwb/anchor3Pos')
 # Temporary addressing, unused
 wrtAnchors = [1, 2, 3]
 
 
 def uwbMsg(wrtAnchors, curr_pos):
-    msg = uwb_pos()
+    msg = UWB_pos()
     msg.header.stamp = rospy.Time.now()
     msg.wrtAnchors = wrtAnchors
     msg.curr_pos = curr_pos
@@ -54,15 +54,17 @@ def getPos(p1, p2, p3, r1, r2, r3):
 
 def uwb():
 
+    ser = None
     try:
         ser = serial.Serial("/dev/ttyACM0", 576000)
     except:
         print("Device unplugged")
 
-    uwbPos = rospy.Publisher('uwb', uwb_pos, queue_size=10)
+    uwbPos = rospy.Publisher('uwb', UWB_pos, queue_size=10)
 
     radialPos = []
     prevRadialPos = []
+
 
     line = ser.readline()  # Read starting few junk lines if any
     line = ser.readline()
@@ -73,6 +75,10 @@ def uwb():
 
     while(not rospy.is_shutdown()):
         try:
+	    alpha = 0.0
+	    rangeNumSamples = 15
+	    alpha = 2.0/(rangeNumSamples+1.0)
+
             line = ser.readline()
             radialPos = [float(i) for i in line.split(',')]
             radialPos = [radialPos[z]*alpha +

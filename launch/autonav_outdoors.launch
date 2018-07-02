@@ -7,6 +7,7 @@
     <remap from="camera" to="$(arg namespace)/image_raw"/>
     <remap from="actions" to="iisc_bebop_nav/cmd"/>
     <remap from="output_image" to="iisc_autonomous_nav/output_image"/>
+    <remap from="uwb" to="uwb/pos"/>
 
     <include file="$(find ar_track_alvar)/launch/bebop2_A1.launch"/>
 
@@ -23,7 +24,6 @@
     </node>
 
     <node name="uwb" pkg="iisc_autonav_outdoors" type="uwb.py" output="screen">
-	    <remap from="uwb" to="$(arg namespace)/uwb"/>
         <rosparam command="load" file="$(find iisc_autonav_outdoors)/config/uwb_info.yaml" />
     </node>
 

@@ -45,7 +45,7 @@ class iisc_rf(object):
 
 	def image_callback(self, data):
 
-		print("~", time.time()-self.time_)
+		# print("~", time.time()-self.time_)
 		self.time_ = time.time()
 		t0 = time.time()
 
@@ -66,7 +66,7 @@ class iisc_rf(object):
 		logits = self.model.infer(img)
 		self.inf_rate_q.pop()
 		self.inf_rate_q = [time.time()-t1] + self.inf_rate_q
-		print(">>> ", sum(self.inf_rate_q)/50)
+		# print(">>> ", sum(self.inf_rate_q)/50)
 
 		# Publish the logits
 		msg = CNN_logits()
@@ -99,7 +99,7 @@ class iisc_rf(object):
 		except CvBridgeError as e:
 			print(e)
 
-		print("~~=", time.time()-t0)
+		# print("~~=", time.time()-t0)
 
 	def bias_lr(self, probs, output):
 

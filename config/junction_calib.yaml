@@ -34,12 +34,13 @@ roll_pid_thresh: 0.4
 #   { 'anchor_ids': [0,1,2], 'nav_dir_ref':  }
 # }
 
-# junc_ids: [0, 1] # IDs to characterize each junction
-# anchor_ids: [[0,1,2], [3,4,5]] # First anchor is at (0,0), second at (x,0), third at (0,y)
-# nav_dir_ref: [[[, ], [, ], [, ]], [[, ], [, ]]] # Reference points to figure the path of arrival at a junction
-# anchor_conf_side: [[4.0,5.0], [6.0, 3.0]] # [x,y] values for each triplet of anchors
-# junc_dist_thresh: [[1.0, 1.0, 2.0], [1.0, 1.0]] # Start UWB based motion once close enough to first waypoint
-# junc_waypoints: [[[], [], []], [[], []]] # Set of waypoints to follow once a reference point is reached, last is the cenre of the junciton
-# diff_dirn_ref_yaw: [[, , ], [, ]] # The yaw value to set PID controller upon while arriving from different paths at a junction
-# junc_turning_angles: [[, , ], [, ]] # Final yaw value to achieve while arriving from different approaches at junction
-# junc_calib_angles: [[], []] # Angle angle of line between (0,0) anchor and (x,0), and magnetic north as seen from Bebop's magnetometer
+junc_ids: [0, 1] # IDs to characterize each junction
+anchor_ids: [[0,1,2], [3,4,5]] # First anchor is at (0,0), second at (x,0), third at (0,y)
+nav_dir_ref: [[[2, 3], [6, 3], [0, 0]], [[0, 0], [0, 0]]] # Reference points to figure the path of arrival at a junction
+anchor_conf_side: [[3.0,3.0], [6.0, 3.0]] # [x,y] values for each triplet of anchors
+junc_dist_thresh: [[1.0, 1.0, 1.0], [1.0, 1.0]] # Start UWB based motion once close enough to first waypoint
+junc_waypoints: [[[[2, 3], [2, 2], [2, 1], [1, 1], [1, 0]], [[6, 3], [4, 3], [2, 3], [0, 3]], [0, 0]], [[0, 0], [0, 0]]] # Set of waypoints to follow once a reference point is reached, last is the cenre of the junciton
+diff_dirn_ref_yaw: [[-0.62, 0.72, -1.1], [-1.1, -1.1]] # The yaw value to set PID controller upon while arriving from different paths at a junction
+junc_turning_angles: [[0.72, -0.62, -1.1], [-1.1, -1.1]] # Final yaw value to achieve while arriving from different approaches at junction
+junc_calib_angles: [-0.62, -1.1] # Angle of line between (0,0) anchor and (x,0), and magnetic north as seen from Bebop's magnetometer
+

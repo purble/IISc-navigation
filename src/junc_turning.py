@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import rospy
-import sys
+import sys, math
 import cv2
 from sensor_msgs.msg import Image
 from iisc_autonav_outdoors.msg import Bebop_cmd
@@ -8,6 +8,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from ar_track_alvar_msgs.msg import AlvarMarker, AlvarMarkers
 from nav_msgs.msg import Odometry
 from iisc_autonav_outdoors.msg import UWB_pos
+import numpy as np
 
 class juncTurn(object):
 
@@ -46,18 +47,18 @@ class juncTurn(object):
         self.eps_xy = 0.1
 
         # Junctions' calibration
-        self.junc_ids = [0, 1]
+        self.junc_ids = rospy.get_param('/iisc_junc_turning/junc_ids')
         # First anchor is at (0,0), second at (x,0), third at (0,y)
-        self.anchor_ids = [[0, 1, 2], [3, 4, 5]]
-        self.nav_dir_ref = [[[3.2, 1.2], [0.3, 5.6], [6.7, 9.0]], [[1.2, 3.4], [5.6, 7.8]]]
+        self.anchor_ids = rospy.get_param('/iisc_junc_turning/anchor_ids')
+        self.nav_dir_ref = rospy.get_param('/iisc_junc_turning/nav_dir_ref')
         # [x,y] values for each triplet of anchors
-        self.anchor_conf_side = [[4.0, 5.0], [6.0, 3.0]]
+        self.anchor_conf_side = rospy.get_param('/iisc_junc_turning/anchor_conf_side')
         # Start UWB based motion once close enough to first waypoint
-        self.junc_dist_thresh = [[1.0, 1.0, 2.0], [1.0, 1.0]]
-        self.junc_waypoints = [[[[2.2,3.3], [3.2,1.2]], [[2.2,9.0]], [[2.3,1.2]]], [[[2.2,1.2]], [[3.3,1.2]]]]
-        self.diff_dirn_ref_yaw = [[-0.4, 0.2, 0.1], [0.5, -0.8]]
-        self.junc_turning_angles = [[0.1, 0.5, 0.9], [-0.4, 0.6]]
-        self.junc_calib_angles = [0.3, -0.1]
+        self.junc_dist_thresh = rospy.get_param('/iisc_junc_turning/junc_dist_thresh')
+        self.junc_waypoints = rospy.get_param('/iisc_junc_turning/junc_waypoints')
+        self.diff_dirn_ref_yaw = rospy.get_param('/iisc_junc_turning/diff_dirn_ref_yaw')
+        self.junc_turning_angles = rospy.get_param('/iisc_junc_turning/junc_turning_angles')
+        self.junc_calib_angles = rospy.get_param('/iisc_junc_turning/junc_calib_angles')
 
         # Active junction index, and previous junction index
         self.junc_idx = 0
@@ -134,6 +135,8 @@ class juncTurn(object):
         if self.x == None or self.y == None :
             return
 
+        # print("....", self.x, " - ", self.y)
+
         # Check if drone nearby any reference point
         if self.ref_idx == None:
             self.ref_idx = self.check_if_near_ref_pt()
@@ -191,13 +194,13 @@ class juncTurn(object):
         nav_dir_ref = self.nav_dir_ref[self.junc_idx]
         for ix, ref in enumerate(nav_dir_ref):
             # ??? Make more robust with repeated measurements
-            if self.within_thresh(ref):
+            if self.within_thresh(ref, ix):
                 return ix
         return None
 
-    def within_thresh(self, ref):
-        d = np.sqrt((ref[0]-self.x) ^ 2 + (ref[1]-self.y) ^ 2)
-        if d <= self.eps_xy:
+    def within_thresh(self, ref, ix):
+        d = np.sqrt(pow((ref[0]-self.x), 2) + pow((ref[1]-self.y), 2))
+        if d <= self.junc_dist_thresh[self.junc_idx][ix]:
             return True
         else:
             return False
@@ -217,10 +220,11 @@ class juncTurn(object):
         wayp = wayps[self.active_wayp]
 
         # Check if already reached current waypoint, then increment self.active_wayp
-        if self.within_thresh(wayp):  # ??? Make more robust with repeated measurements
+        if self.within_thresh(wayp, self.ref_idx):  # ??? Make more robust with repeated measurements
             self.active_wayp += 1
             return
         else:  # Else follow the trajectory to reach it
+        	print("....", wayp)
             self.follow_trajectory(wayp)
 
     def follow_trajectory(self, wayp):
@@ -235,6 +239,7 @@ class juncTurn(object):
         pitch, roll = self.get_pitch_roll(x_vel, y_vel)
 
         # Send commands to Bebop
+        print("<<<<>>>> ", pitch, roll, yaw)
         self.msg_pub('Custom', [pitch, roll, 0.0, 0.0, 0.0, yaw])
 
     def get_yaw_vel_pid(self):
@@ -252,7 +257,7 @@ class juncTurn(object):
         p_comp = self.yaw_p * delta
         d_comp = self.yaw_d * delta-self.yaw_delta_cache
         self.yaw_delta_cache = delta
-        self.yaw_iList = self.yaw_iList.pop()
+        self.yaw_iList.pop()
         self.yaw_iList = [delta] + self.yaw_iList
         i_comp = self.yaw_i * sum(self.yaw_iList)
 
@@ -283,8 +288,8 @@ class juncTurn(object):
         dx_comp = self.xy_d * (delta_x-self.xy_delta_cache[0])
         dy_comp = self.xy_d * (delta_y-self.xy_delta_cache[1])
         self.xy_delta_cache = [delta_x, delta_y]
-        self.xy_iList[0] = self.xy_iList[0].pop()
-        self.xy_iList[1] = self.xy_iList[1].pop()
+        self.xy_iList[0].pop()
+        self.xy_iList[1].pop()
         self.xy_iList[0] = [delta_x] + self.xy_iList[0]
         self.xy_iList[1] = [delta_y] + self.xy_iList[1]
         ix_comp = self.xy_i * sum(self.xy_iList[0])
@@ -298,16 +303,16 @@ class juncTurn(object):
 
     def get_pitch_roll(self, x_vel, y_vel):
 
-        # Get theta between y axis of triplet of anchors and curr_dirn_ref_yaw
-        ang1 = self.junc_calib_angles[self.junc_idx]
-        ang2 = self.diff_dirn_ref_yaw[self.junc_idx][self.ref_idx]
-
-        # Get clockwise theta
-        theta = self.get_clockwise_theta(ang1, ang2)
+        # Get theta between x axis of triplet of anchors and curr_dirn_ref_yaw
+        ang1 = self.diff_dirn_ref_yaw[self.junc_idx][self.ref_idx]
+        ang2 = self.junc_calib_angles[self.junc_idx]
+        
+        # Get clockwise theta, from ang1 to ang2
+        theta = self.get_clockwise_theta(ang1, ang2)*math.pi
 
         # Calculate the actuation velocities using this theta
-        pitch = y_vel*math.acos(theta) + x_vel*math.asin(theta)
-        roll = x_vel*math.acos(theta) - y_vel*math.asin(theta)
+        pitch = x_vel*math.cos(theta) + y_vel*math.sin(theta)
+        roll = x_vel*math.sin(theta) - y_vel*math.cos(theta)
 
         # Return capped velocities
         ret_pitch, ret_roll = None, None
@@ -323,6 +328,20 @@ class juncTurn(object):
             ret_roll = roll
 
         return ret_pitch, -1.0*ret_roll  # go right/left is negative/positive
+
+    def get_clockwise_theta(self, ang1, ang2):
+    	# if the sign of both ang1 and ang2 is same
+    	if (np.sign(ang1)==np.sign(ang2)):
+    		if ang1 >= ang2:
+    			return ang1-ang2
+    		else:
+    			2 - (ang2-ang1)
+    	# Else if the sign is different
+    	else:
+    		if (ang1 > 0.0):
+    			return ang1-ang2
+    		else:
+    			2 - (ang2-ang1)
 
     def msg_pub(self, str, lis):
         msg = Bebop_cmd()
@@ -383,10 +402,10 @@ class juncTurn(object):
         tyaw = (tar_yaw + 1.0)*math.pi
 
         # Get x,y coordinates of unit vector for both current and target yaw
-        cx = math.acos(cyaw)
-        cy = math.asin(cyaw)
-        tx = math.acos(tyaw)
-        ty = math.asin(tyaw)
+        cx = math.cos(cyaw)
+        cy = math.sin(cyaw)
+        tx = math.cos(tyaw)
+        ty = math.sin(tyaw)
 
         # Get the cross product between two unit vectors
         c = [cx, cy]
@@ -395,9 +414,9 @@ class juncTurn(object):
 
         # If cross_pd is negative then turn right, else turn left
         if cross_pd <= 0.0:
-            return True, self.turnRDiff(cur_yaw, tar_yaw)
+            return True, self.turnRdiff(cur_yaw, tar_yaw)
         else:
-            return False, self.turnLDiff(cur_yaw, tar_yaw)
+            return False, self.turnLdiff(cur_yaw, tar_yaw)
 
     def turnRdiff(self, cur_yaw, tar_yaw):
         # If both values are of same sign
