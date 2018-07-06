@@ -1,3 +1,4 @@
 src/trained_models/*/data_points
 src/trained_models/*/checkpoints
+src/BinExp
 

@@ -1,11 +1,21 @@
 numAnchors: 3 
 
-anchor1Pos: [3.0, 0.0]
+anchor1Pos: [6.0, 0.0]
 anchor1Offset: -0.61
 
 anchor2Pos: [0.0, 0.0]
 anchor2Offset: -0.58
 
-anchor3Pos: [0.0, 3.0]
+anchor3Pos: [0.0, 6.0]
 anchor3Offset: -0.70
 
+# Tree Junc near RBCCPS
+
+# anchor1Pos: [10.5, 0.0]
+# anchor1Offset: -0.61
+
+# anchor2Pos: [0.0, 0.0]
+# anchor2Offset: -0.58
+
+# anchor3Pos: [0.0, 10.0]
+# anchor3Offset: -0.70

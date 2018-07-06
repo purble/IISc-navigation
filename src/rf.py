@@ -94,7 +94,7 @@ class iisc_rf(object):
 
 		# Publish the output image
 		try:
-			rospy.loginfo("State 1")
+			# rospy.loginfo("State 1")
 			self.image_pub.publish(self.bridge.cv2_to_imgmsg(out_image, "bgr8"))
 		except CvBridgeError as e:
 			print(e)

@@ -39,12 +39,14 @@ class juncTurn(object):
         # Rotation flag for turning at junction
         self.rotate = False
         self.rotate_dir = None
+        self.cur_yaw = 0.0
 
         # Epsilon range round target yaw value to achieve
-        self.eps_yaw = 0.04
+        # self.eps_yaw = 0.04
+        self.eps_yaw = 0.1
 
         # Epsilon range around x and y coordinates of destination
-        self.eps_xy = 0.1
+        self.eps_xy = 0.5
 
         # Junctions' calibration
         self.junc_ids = rospy.get_param('/iisc_junc_turning/junc_ids')
@@ -123,34 +125,33 @@ class juncTurn(object):
 
         # Publish the output image
         try:
-            rospy.loginfo("State 2")
+            # rospy.loginfo("State 2")
             self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
         except CvBridgeError as e:
             print(e)
 
     def uwb_callback(self, data):
 
-        # Get data from current junction
-        [self.x, self.y] = data.curr_pos
-        if self.x == None or self.y == None :
-            return
+		# Get data from current junction
+		[self.x, self.y] = data.curr_pos
+		if self.x == None or self.y == None :
+		    return
 
-        # print("....", self.x, " - ", self.y)
+		# print("....", self.x, " - ", self.y)
 
-        # Check if drone nearby any reference point
-        if self.ref_idx == None:
-            self.ref_idx = self.check_if_near_ref_pt()
-            if self.ref_idx is not None:
-                # So near some reference point, hence change the navigation state
-                rospy.set_param('/nav_state', 2)
-                # Change self.active_wayp to 0
-                self.active_wayp = 0
-            else:
-                return
-
-        # Execute the trajectory along the set of predefined waypoints
-        if not self.rotate:
-            self.navigate_along_wayps()
+		# Check if drone nearby any reference point
+		if self.ref_idx == None:
+			self.ref_idx = self.check_if_near_ref_pt()
+			if self.ref_idx is not None:
+			    # So near some reference point, hence change the navigation state
+			    rospy.set_param('/nav_state', 2)
+			    # Change self.active_wayp to 0
+			    self.active_wayp = 0
+			else:
+				return
+		elif (self.rotate is False):
+			print("ref_idx :: ", self.ref_idx)
+			self.navigate_along_wayps()
 
     def bookeeping(self):
         # Increment the junction index
@@ -164,6 +165,9 @@ class juncTurn(object):
 
         # Set rotate_dir to None
         self.rotate_dir = None
+
+        # Reset active_wayp to -1 i.e. look for next reference point
+        self.active_wayp = -1
 
     def getFilteredUWBdata(self, data):
         #
@@ -199,33 +203,40 @@ class juncTurn(object):
         return None
 
     def within_thresh(self, ref, ix):
+    	print("ref ", ref)
         d = np.sqrt(pow((ref[0]-self.x), 2) + pow((ref[1]-self.y), 2))
-        if d <= self.junc_dist_thresh[self.junc_idx][ix]:
+        # print(",,,,:: ", self.active_wayp)
+        if self.active_wayp<0:
+        	dref = self.junc_dist_thresh[self.junc_idx][ix]
+        else:
+        	dref = self.eps_xy
+        print("####  distances curr_d dref", d, dref)
+        if d <= dref:
             return True
         else:
             return False
 
     def navigate_along_wayps(self):
 
-        # Get the list of waypoints for active junction, based on direction of approach
-        wps = self.junc_waypoints[self.junc_idx]
-        wayps = wps[self.ref_idx]
+		# Get the list of waypoints for active junction, based on direction of approach
+		wps = self.junc_waypoints[self.junc_idx]
+		wayps = wps[self.ref_idx]
 
-        # If self.active_wayp > length of wayps i.e. last waypoint has been reached, set self.rotate to True
-        if self.active_wayp == len(wayps):
-            self.rotate = True
-            return
+		# If self.active_wayp > length of wayps i.e. last waypoint has been reached, set self.rotate to True
+		if self.active_wayp == len(wayps):
+		    self.rotate = True
+		    return
 
-        # Else get the x,y,z coordinate of the waypoint to head towards next
-        wayp = wayps[self.active_wayp]
+		# Else get the x,y,z coordinate of the waypoint to head towards next
+		wayp = wayps[self.active_wayp]
 
-        # Check if already reached current waypoint, then increment self.active_wayp
-        if self.within_thresh(wayp, self.ref_idx):  # ??? Make more robust with repeated measurements
-            self.active_wayp += 1
-            return
-        else:  # Else follow the trajectory to reach it
-        	print("....", wayp)
-            self.follow_trajectory(wayp)
+		# Check if already reached current waypoint, then increment self.active_wayp
+		if self.within_thresh(wayp, self.ref_idx):  # ??? Make more robust with repeated measurements
+		    self.active_wayp += 1
+		    return
+		else:  # Else follow the trajectory to reach it
+			print(".... wayp", wayp)
+			self.follow_trajectory(wayp)
 
     def follow_trajectory(self, wayp):
 
@@ -239,13 +250,18 @@ class juncTurn(object):
         pitch, roll = self.get_pitch_roll(x_vel, y_vel)
 
         # Send commands to Bebop
-        print("<<<<>>>> ", pitch, roll, yaw)
+        print("<<<<>>>> ", pitch, roll, yaw, x_vel, y_vel)
+        if abs(pitch)>0.08:
+        	pitch = np.sign(pitch)*0.08
+        if abs(roll)>0.06:
+        	roll = np.sign(roll)*0.06
         self.msg_pub('Custom', [pitch, roll, 0.0, 0.0, 0.0, yaw])
 
     def get_yaw_vel_pid(self):
 
         # Target state
         tar = self.diff_dirn_ref_yaw[self.junc_idx][self.ref_idx]
+        tar = self.mag2radians(tar)
 
         # Current state
         cur = self.cur_yaw
@@ -262,7 +278,7 @@ class juncTurn(object):
         i_comp = self.yaw_i * sum(self.yaw_iList)
 
         # Caculate the final actuation value
-        val = p_comp + d_comp + i_comp
+        val = (p_comp + d_comp + i_comp)*-1.0 # Clockwise is negative
 
         # Return capped value
         if abs(val) > self.yaw_pid_thresh:
@@ -301,47 +317,60 @@ class juncTurn(object):
 
         return x_vel, y_vel
 
+    def mag2radians(self, ang):
+    	###
+		# if between -1 and -0. take acos as it is 
+		# "     "    0.0 and 1.0 take acos + 3.14
+
+    	if (ang < 0.0) and (ang >= -1.0):
+        	res_ang = math.acos(-1.0*ang)*2.0
+        else:
+        	res_ang = math.acos(-1.0*ang)*2.0
+
+       	return res_ang
+
     def get_pitch_roll(self, x_vel, y_vel):
 
-        # Get theta between x axis of triplet of anchors and curr_dirn_ref_yaw
-        ang1 = self.diff_dirn_ref_yaw[self.junc_idx][self.ref_idx]
-        ang2 = self.junc_calib_angles[self.junc_idx]
-        
-        # Get clockwise theta, from ang1 to ang2
-        theta = self.get_clockwise_theta(ang1, ang2)*math.pi
+		# Get theta between x axis of triplet of anchors and curr_dirn_ref_yaw
+		ang1 = self.diff_dirn_ref_yaw[self.junc_idx][self.ref_idx]
+		ang2 = self.junc_calib_angles[self.junc_idx]
 
-        # Calculate the actuation velocities using this theta
-        pitch = x_vel*math.cos(theta) + y_vel*math.sin(theta)
-        roll = x_vel*math.sin(theta) - y_vel*math.cos(theta)
+		# Convert to radians
+		ang1 = self.mag2radians(ang1)
+		ang2 = self.mag2radians(ang2)        
 
-        # Return capped velocities
-        ret_pitch, ret_roll = None, None
+		print("Angles ref_yaw junc_calib!!!!!", ang1, ang2)
 
-        if abs(pitch) > self.pitch_pid_thresh:
-            ret_pitch = self.pitch_pid_thresh * np.sign(pitch)
-        else:
-            ret_pitch = pitch
+		# Get anti-clockwise theta, from ang1 to ang2
+		theta = self.get_anticlockwise_theta(ang1, ang2)
+		print("$$$$ theta", theta)
 
-        if abs(roll) > self.roll_pid_thresh:
-            ret_roll = self.roll_pid_thresh * np.sign(roll)
-        else:
-            ret_roll = roll
+		# Calculate the actuation velocities using this theta
+		pitch = x_vel*math.cos(theta) + y_vel*math.sin(theta)
+		roll = x_vel*math.sin(theta) - y_vel*math.cos(theta)
 
-        return ret_pitch, -1.0*ret_roll  # go right/left is negative/positive
+		# Return capped velocities
+		ret_pitch, ret_roll = None, None
 
-    def get_clockwise_theta(self, ang1, ang2):
-    	# if the sign of both ang1 and ang2 is same
-    	if (np.sign(ang1)==np.sign(ang2)):
-    		if ang1 >= ang2:
-    			return ang1-ang2
-    		else:
-    			2 - (ang2-ang1)
-    	# Else if the sign is different
+		if abs(pitch) > self.pitch_pid_thresh:
+		    ret_pitch = self.pitch_pid_thresh * np.sign(pitch)
+		else:
+		    ret_pitch = pitch
+
+		if abs(roll) > self.roll_pid_thresh:
+		    ret_roll = self.roll_pid_thresh * np.sign(roll)
+		else:
+		    ret_roll = roll
+
+		return ret_pitch, -1.0*ret_roll  # go right/left is negative/positive
+
+    def get_anticlockwise_theta(self, ang1, ang2):
+    	# ang1: Ref angle
+    	# ang2: Jun Calib x-axis angle
+    	if ang1 >= ang2:
+    		return ang1 - ang2
     	else:
-    		if (ang1 > 0.0):
-    			return ang1-ang2
-    		else:
-    			2 - (ang2-ang1)
+    		return 2*math.pi - (ang2-ang1)
 
     def msg_pub(self, str, lis):
         msg = Bebop_cmd()
@@ -354,20 +383,27 @@ class juncTurn(object):
     def odom_callback(self, data):
 
         # Current yaw value
-        self.cur_yaw = data.pose.pose.orientation.z
+        cur_yaw = data.pose.pose.orientation.z
+        self.cur_yaw = self.mag2radians(cur_yaw)
+
+        print("Mag value in radians::::", self.cur_yaw)
 
         if not self.rotate: return
+
+        print("Rotating!!!")
 
         # Target yaw value
         tar_yaw = self.junc_turning_angles[self.junc_idx][self.ref_idx]
 
         # Get direction to rotate if currently unknown
         if self.rotate_dir is None:
-            self.rotate_dir, _ = self.get_rot_dir(cur_yaw, tar_yaw)
+            self.rotate_dir, _ = self.get_rot_dir_n_diff(cur_yaw, tar_yaw)
 
         # Get the upper and lower limits for target yaw
         ulim_yaw = tar_yaw + self.eps_yaw
         llim_yaw = tar_yaw - self.eps_yaw
+
+        print("Yaws..", cur_yaw, ulim_yaw, llim_yaw)
 
         # Check if the current yaw is between the two limits
         if (ulim_yaw <= 1.0) and (llim_yaw >= -1.0) and (cur_yaw > (llim_yaw)) and (cur_yaw < (ulim_yaw)):
@@ -386,7 +422,7 @@ class juncTurn(object):
 
         # If the target yaw is not achieved then rotate
         if self.rotate:
-            if self.rotate_dir:
+            if not self.rotate_dir:
                 self.msg_pub('TurnRight', [0.0]*6)
             else:
                 self.msg_pub('TurnLeft', [0.0]*6)
@@ -398,8 +434,10 @@ class juncTurn(object):
         # yaw : theta -- 0.0 : 0, 0.5 : 90, 1.0 : 180, 1.5 : 270, 2.0 : 360,
 
         # Get current and target yaw in radian in new coordinate system
-        cyaw = (cur_yaw + 1.0)*math.pi
-        tyaw = (tar_yaw + 1.0)*math.pi
+        # cyaw = (cur_yaw + 1.0)*math.pi
+        # tyaw = (tar_yaw + 1.0)*math.pi
+        cyaw = cur_yaw
+        tyaw = tar_yaw
 
         # Get x,y coordinates of unit vector for both current and target yaw
         cx = math.cos(cyaw)
