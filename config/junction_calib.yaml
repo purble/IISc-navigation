@@ -17,6 +17,32 @@ xy_i_log_len: 6
 pitch_pid_thresh: 0.4
 roll_pid_thresh: 0.4
 
+############################
+##### UWB Anchors Info #####
+############################
+
+numAnchors: 3 
+
+anchor1Pos: [6.0, 0.0]
+anchor1Offset: -0.61
+
+anchor2Pos: [0.0, 0.0]
+anchor2Offset: -0.58
+
+anchor3Pos: [0.0, 6.0]
+anchor3Offset: -0.70
+
+# Tree Junc near RBCCPS
+
+# anchor1Pos: [10.5, 0.0]
+# anchor1Offset: -0.61
+
+# anchor2Pos: [0.0, 0.0]
+# anchor2Offset: -0.58
+
+# anchor3Pos: [0.0, 10.0]
+# anchor3Offset: -0.70
+
 #####################################
 ##### Junction calibration info #####
 #####################################
@@ -57,7 +83,6 @@ junc_waypoints: [[[[2.7, 9.8], [2.6, 6.1], [2.4, 2.9], [0.3, 2.6]], [[0.3, 2.6],
 diff_dirn_ref_yaw: [[-0.7, -0.06], [-1.1,-1.1]] # The yaw value to set PID controller upon while arriving from different paths at a junction
 junc_turning_angles: [[0.98, 0.72], [-1.1,-1.1]] # Final yaw value to achieve while arriving from different approaches at junction
 junc_calib_angles: [0.03,-1.1] # Angle of line between (0,0) anchor and (x,0), and magnetic north as seen from Bebop's magnetometer
-
 
 # Tree Junction near RBCCPS
 # junc_ids: [0,1] # IDs to characterize each junction

@@ -16,14 +16,14 @@ import json
 from iisc_autonav_outdoors.msg import UWB_pos
 
 anchorOffsets = []
-anchorOffsets.append(rospy.get_param('/uwb/anchor1Offset'))
-anchorOffsets.append(rospy.get_param('/uwb/anchor2Offset'))
-anchorOffsets.append(rospy.get_param('/uwb/anchor2Offset'))
+anchorOffsets.append(rospy.get_param('/iisc_junc_turning/anchor1Offset'))
+anchorOffsets.append(rospy.get_param('/iisc_junc_turning/anchor2Offset'))
+anchorOffsets.append(rospy.get_param('/iisc_junc_turning/anchor2Offset'))
 
-numAnchors = rospy.get_param('/uwb/numAnchors')
-anchor1Pos = rospy.get_param('/uwb/anchor1Pos')
-anchor2Pos = rospy.get_param('/uwb/anchor2Pos')
-anchor3Pos = rospy.get_param('/uwb/anchor3Pos')
+numAnchors = rospy.get_param('/iisc_junc_turning/numAnchors')
+anchor1Pos = rospy.get_param('/iisc_junc_turning/anchor1Pos')
+anchor2Pos = rospy.get_param('/iisc_junc_turning/anchor2Pos')
+anchor3Pos = rospy.get_param('/iisc_junc_turning/anchor3Pos')
 # Temporary addressing, unused
 wrtAnchors = [1, 2, 3]
 
