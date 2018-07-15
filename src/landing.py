@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-import rospy, sys
+import rospy, sys, math
 from sensor_msgs.msg import Image
 from iisc_bebop_nav.msg import Bebop_cmd
 from cv_bridge import CvBridge, CvBridgeError
+from nav_msgs.msg import Odometry
 from ar_track_alvar_msgs.msg import AlvarMarker, AlvarMarkers
 from shape_detection import *
 from PIDcontrol import *
@@ -35,8 +36,13 @@ class landing(object):
 
 		# Image subscriber
 		self.image_sub = rospy.Subscriber("camera", Image, self.image_callback)
+		# Subscribe to odometry data, for turning using magnetometer
+		self.odom_sub = rospy.Subscriber("odom", Odometry, self.odom_callback)
 		# Initialize pad detection history list
 		self.pad_detected_list = [0]*rospy.get_param('/iisc_landing/landingpad_fiducial_detected_list_size')
+
+		# Store and update current yaw in radians using Odometry data
+		self.cur_yaw_rad = 0.0
 
 		# Fiducial aided landing enabled
 		if rospy.get_param('/iisc_landing/landingWithFiducial'):
@@ -113,7 +119,7 @@ class landing(object):
 				self.action_pub.publish(self.msg_gen('Hover', [0.0] * 6))
 				self.update_landingpad_detect_hover_count()
 			else:
-				cmd = self.pid_controller.eval_actuation()
+				cmd = self.pid_controller.eval_actuation(self.cur_yaw_rad)
 				self.action_pub.publish(cmd)
 
 			if sum(self.pad_detected_list) < rospy.get_param('/iisc_landing/landingpad_notinFOV_thresh'):
@@ -150,6 +156,18 @@ class landing(object):
 		else:
 			self.pad_detected_list = self.update_list(self.pad_detected_list, [0])
 
+	def mag2radians(self, ang):
+		###
+		# if between -1 and -0. take acos as it is 
+		# "     "    0.0 and 1.0 take acos + 3.14
+
+		if (ang < 0.0) and (ang >= -1.0):
+			res_ang = math.acos(-1.0*ang)*2.0
+		else:
+			res_ang = math.acos(-1.0*ang)*2.0
+
+			return res_ang
+
 	### Fiducial_callback and it's utility functions
 
 	def fiducial_callback(self, data):
@@ -160,6 +178,8 @@ class landing(object):
 			# Update the 'distance2Lmarker' rosparam
 			if cur_id == rospy.get_param('/iisc_landing/landingpad_fiducial_id'):
 				rospy.set_param('/iisc_landing/distance2Lmarker', marker.pose.pose.position.z)
+
+			print("^^^^^^ Landing max dist threshold : landing pad distance : landing min dist threshold ", rospy.get_param('/iisc_landing/landing_max_dist_thresh'), " : ", rospy.get_param('/iisc_landing/landingpad_fiducial_id'), " : ", rospy.get_param('/iisc_landing/landing_min_dist_thresh'))
 
 			# If already landingpad fiducial detected, return
 			if rospy.get_param('/landing_fiducial_detected'): return
@@ -180,6 +200,11 @@ class landing(object):
 		lst.pop()
 		lst = val + lst
 		return lst
+
+	def odom_callback(self, data):
+		# Current yaw value
+		cur_yaw = data.pose.pose.orientation.z
+		self.cur_yaw_rad = self.mag2radians(cur_yaw)
 
 def main(args):
 	# Initialize Node class

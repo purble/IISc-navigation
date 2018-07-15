@@ -74,15 +74,15 @@ anchor3Offset: -0.70
 
 
 # Behind High Voltage
-junc_ids: [0,1] # IDs to characterize each junction
-anchor_ids: [[0,1,2]] # First anchor is at (0,0), second at (x,0), third at (0,y)
-nav_dir_ref: [[[2.7, 9.8], [0, 0]], [[100,100], [100,100]]] # Reference points to figure the path of arrival at a junction
-anchor_conf_side: [[6.0,6.0],[3.0,6.0]] # [x,y] values for each triplet of anchors
-junc_dist_thresh: [[3.0, 1.0],[1.0,1.0]] # Start UWB based motion once close enough to first waypoint
-junc_waypoints: [[[[2.7, 9.8], [2.6, 6.1], [2.4, 2.9], [0.3, 2.6]], [[0.3, 2.6], [2.4, 2.9], [2.6, 6.1], [2.7, 9.8]]], [[[100, 100]], [[100, 100]]]] # Set of waypoints to follow once a reference point is reached, last is the cenre of the junciton
-diff_dirn_ref_yaw: [[-0.7, -0.06], [-1.1,-1.1]] # The yaw value to set PID controller upon while arriving from different paths at a junction
-junc_turning_angles: [[0.98, 0.72], [-1.1,-1.1]] # Final yaw value to achieve while arriving from different approaches at junction
-junc_calib_angles: [0.03,-1.1] # Angle of line between (0,0) anchor and (x,0), and magnetic north as seen from Bebop's magnetometer
+# junc_ids: [0,1] # IDs to characterize each junction
+# anchor_ids: [[0,1,2]] # First anchor is at (0,0), second at (x,0), third at (0,y)
+# nav_dir_ref: [[[2.7, 9.8], [0, 0]], [[100,100], [100,100]]] # Reference points to figure the path of arrival at a junction
+# anchor_conf_side: [[6.0,6.0],[3.0,6.0]] # [x,y] values for each triplet of anchors
+# junc_dist_thresh: [[3.0, 1.0],[1.0,1.0]] # Start UWB based motion once close enough to first waypoint
+# junc_waypoints: [[[[2.7, 9.8], [2.6, 6.1], [2.4, 2.9], [0.3, 2.6]], [[0.3, 2.6], [2.4, 2.9], [2.6, 6.1], [2.7, 9.8]]], [[[100, 100]], [[100, 100]]]] # Set of waypoints to follow once a reference point is reached, last is the cenre of the junciton
+# diff_dirn_ref_yaw: [[-0.7, -0.06], [-1.1,-1.1]] # The yaw value to set PID controller upon while arriving from different paths at a junction
+# junc_turning_angles: [[0.98, 0.72], [-1.1,-1.1]] # Final yaw value to achieve while arriving from different approaches at junction
+# junc_calib_angles: [0.03,-1.1] # Angle of line between (0,0) anchor and (x,0), and magnetic north as seen from Bebop's magnetometer
 
 # Tree Junction near RBCCPS
 # junc_ids: [0,1] # IDs to characterize each junction
@@ -94,3 +94,16 @@ junc_calib_angles: [0.03,-1.1] # Angle of line between (0,0) anchor and (x,0), a
 # diff_dirn_ref_yaw: [[0.10, -0.06], [-1.1,-1.1]] # The yaw value to set PID controller upon while arriving from different paths at a junction
 # junc_turning_angles: [[0.98, 0.72], [-1.1,-1.1]] # Final yaw value to achieve while arriving from different approaches at junction
 # junc_calib_angles: [0.03,-1.1] # Angle of line between (0,0) anchor and (x,0), and magnetic north as seen from Bebop's magnetometer
+
+#Tree Junction near RBCCPS : parikrama
+junc_ids: [0,1] # IDs to characterize each junction
+anchor_ids: [[0,1,2], [3,4,5]] # First anchor is at (0,0), second at (x,0), third at (0,y)
+nav_dir_ref: [[[-1.8, 5.0], [0, 0]], [[100,100], [100,100]]] # Reference points to figure the path of arrival at a junction
+anchor_conf_side: [[6.0,6.0],[3.0,6.0]] # [x,y] values for each triplet of anchors
+junc_dist_thresh: [[4.0, 1.0],[1.0,1.0]] # Start UWB based motion once close enough to first waypoint
+junc_waypoints: [[[[-1.8, 5.0], [3, 5.7], [6.7, 4], [8, -0.3], [7.4, -2.8], [5.5, -4.2], [2.98, -1.0], [3, 5.7], [-1.8, 5.0]], [[0.3, 2.6], [2.4, 2.9], [2.6, 6.1], [2.7, 9.8]]], [[[100, 100]], [[100, 100]]]] # Set of waypoints to follow once a reference point is reached, last is the cenre of the junciton
+junc_wayp_headings: [[[[0.10],[0.10], [0.10], [0.10], [0.10], [0.10], [0.10], [0.10], [0.10]], [[-0.06],[-0.06], [-0.06], [-0.06]]], [[[0.5]], [[0.5]]]] # Total number of heading dirns is equal to toal waypoints, it is like what dirn one would like the drone to face once it reaches a wayp, so it try to achive that while reaching there from previous wayp
+junc_wayp_n_samples: 1
+diff_dirn_ref_yaw: [[0.10, -0.06], [-1.1,-1.1]] # The yaw value to set PID controller upon while arriving from different paths at a junction
+junc_turning_angles: [[0.99, 0.72], [-1.1,-1.1]] # Final yaw value to achieve while arriving from different approaches at junction
+junc_calib_angles: [0.03,-1.1] # Angle of line between (0,0) anchor and (x,0), and magnetic north as seen from Bebop's magnetometer

@@ -39,7 +39,7 @@ class juncTurn(object):
         # Rotation flag for turning at junction
         self.rotate = False
         self.rotate_dir = None
-        self.cur_yaw = 0.0
+        self.cur_yaw_rad = 0.0
 
         # Epsilon range round target yaw value to achieve
         # self.eps_yaw = 0.04
@@ -58,6 +58,8 @@ class juncTurn(object):
         # Start UWB based motion once close enough to first waypoint
         self.junc_dist_thresh = rospy.get_param('/iisc_junc_turning/junc_dist_thresh')
         self.junc_waypoints = rospy.get_param('/iisc_junc_turning/junc_waypoints')
+        self.junc_wayp_headings = rospy.get_param('/iisc_junc_turning/junc_wayp_headings')
+        self.junc_wayp_n_samples = rospy.get_param('/iisc_junc_turning/junc_wayp_n_samples')
         self.diff_dirn_ref_yaw = rospy.get_param('/iisc_junc_turning/diff_dirn_ref_yaw')
         self.junc_turning_angles = rospy.get_param('/iisc_junc_turning/junc_turning_angles')
         self.junc_calib_angles = rospy.get_param('/iisc_junc_turning/junc_calib_angles')
@@ -68,6 +70,9 @@ class juncTurn(object):
 
         # Active waypoint to move next towards, encoded as index of self.junc_waypoint sublist
         self.active_wayp = -1
+
+        # Waypoint sample count
+        self.n_samples = 0
 
         # Position in 3D plane
         self.x = None
@@ -210,11 +215,16 @@ class juncTurn(object):
         	dref = self.junc_dist_thresh[self.junc_idx][ix]
         else:
         	dref = self.eps_xy
+
         print("####  distances curr_d dref", d, dref)
         if d <= dref:
-            return True
-        else:
-            return False
+        	if self.active_wayp<0:
+        		return True # No need to collect multiple samples to detect if a junction has arrived
+        	else:
+        		self.n_samples += 1 # Need to collect junc_wayp_n_samples at each wayp, b4 moving to next
+	        	if self.n_samples == self.junc_wayp_n_samples:
+		            return True
+        return False
 
     def navigate_along_wayps(self):
 
@@ -233,6 +243,7 @@ class juncTurn(object):
 		# Check if already reached current waypoint, then increment self.active_wayp
 		if self.within_thresh(wayp, self.ref_idx):  # ??? Make more robust with repeated measurements
 		    self.active_wayp += 1
+		    self.n_samples = 0 # Reset the samples collected so far for next waypoint
 		    return
 		else:  # Else follow the trajectory to reach it
 			print(".... wayp", wayp)
@@ -260,11 +271,11 @@ class juncTurn(object):
     def get_yaw_vel_pid(self):
 
         # Target state
-        tar = self.diff_dirn_ref_yaw[self.junc_idx][self.ref_idx]
+        tar = self.junc_wayp_headings[self.junc_idx][self.ref_idx][self.active_wayp]
         tar = self.mag2radians(tar)
 
         # Current state
-        cur = self.cur_yaw
+        cur = self.cur_yaw_rad
 
         # Difference
         _, delta = self.get_rot_dir_n_diff(cur, tar)
@@ -331,13 +342,14 @@ class juncTurn(object):
 
     def get_pitch_roll(self, x_vel, y_vel):
 
-		# Get theta between x axis of triplet of anchors and curr_dirn_ref_yaw
+		# Get theta between x axis of triplet of anchors and curr_yaw
 		ang1 = self.diff_dirn_ref_yaw[self.junc_idx][self.ref_idx]
-		ang2 = self.junc_calib_angles[self.junc_idx]
+		# ang2 = self.junc_calib_angles[self.junc_idx]
+		ang2 = self.cur_yaw_rad # I guess it is better to take actual yaw, since while turning at multiple wayps it may take some time to achieve the setpoint yaw
 
 		# Convert to radians
 		ang1 = self.mag2radians(ang1)
-		ang2 = self.mag2radians(ang2)        
+		# ang2 = self.mag2radians(ang2) # Already converted to radians        
 
 		print("Angles ref_yaw junc_calib!!!!!", ang1, ang2)
 
@@ -384,9 +396,9 @@ class juncTurn(object):
 
         # Current yaw value
         cur_yaw = data.pose.pose.orientation.z
-        self.cur_yaw = self.mag2radians(cur_yaw)
+        self.cur_yaw_rad = self.mag2radians(cur_yaw)
 
-        print("Mag value in radians::::", self.cur_yaw)
+        print("Mag value in radians::::", self.cur_yaw_rad)
 
         if not self.rotate: return
 
@@ -394,10 +406,11 @@ class juncTurn(object):
 
         # Target yaw value
         tar_yaw = self.junc_turning_angles[self.junc_idx][self.ref_idx]
+        tar_yaw_rad = self.mag2radians(tar_yaw)
 
         # Get direction to rotate if currently unknown
         if self.rotate_dir is None:
-            self.rotate_dir, _ = self.get_rot_dir_n_diff(cur_yaw, tar_yaw)
+            self.rotate_dir, _ = self.get_rot_dir_n_diff(self.cur_yaw_rad, tar_yaw_rad)
 
         # Get the upper and lower limits for target yaw
         ulim_yaw = tar_yaw + self.eps_yaw
@@ -422,7 +435,7 @@ class juncTurn(object):
 
         # If the target yaw is not achieved then rotate
         if self.rotate:
-            if not self.rotate_dir:
+            if self.rotate_dir:
                 self.msg_pub('TurnRight', [0.0]*6)
             else:
                 self.msg_pub('TurnLeft', [0.0]*6)
