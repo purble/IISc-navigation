@@ -6,7 +6,7 @@ landingpad_detection_thresh: 6
 landingpad_notinFOV_thresh: 3
 landed: False
 
-landing_yaw: -0.3
+landing_yaw: -0.99
 
 landingWithFiducial: True
 landingpad_fiducial_id: 17
@@ -16,7 +16,7 @@ landingpad_fiducial_detected_thresh: 0
 
 distance2Lmarker: 1000.0
 landing_max_dist_thresh: 6.0
-landing_min_dist_thresh: 2.0
+landing_min_dist_thresh: 1.0
 
 landingpad_detect_hover_count: 10
 

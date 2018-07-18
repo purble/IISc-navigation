@@ -1,5 +1,7 @@
 import rospy
 from iisc_bebop_nav.msg import Bebop_cmd
+import math
+import numpy as np
 
 # PID control along tilt and yaw
 class PIDcontroller2D(object):
@@ -40,6 +42,7 @@ class PIDcontroller2D(object):
 		self.sign = lambda x: (1, -1)[x < 0]
 
 	def eval_actuation(self, cur_yaw_rad):
+
 		err_x = rospy.get_param('/iisc_landing/err_x')
 		vel_x = 0.0
 
@@ -75,19 +78,21 @@ class PIDcontroller2D(object):
 		# Current state
 		cur = cur_yaw_rad
 
+		print(">>>> cur tar", cur, tar)
+
 		# Difference
 		_, delta = self.get_rot_dir_n_diff(cur, tar)
 
 		# Calculate the three PID components
 		p_comp = self.yaw_p * delta
-		d_comp = self.yaw_d * delta-self.yaw_delta_cache
+		d_comp = self.yaw_d * (delta-self.yaw_delta_cache)
 		self.yaw_delta_cache = delta
 		self.yaw_iList.pop()
 		self.yaw_iList = [delta] + self.yaw_iList
 		i_comp = self.yaw_i * sum(self.yaw_iList)
 
 		# Caculate the final actuation value
-		val = (p_comp + d_comp + i_comp)*-1.0 # Clockwise is negative
+		val = (p_comp + d_comp + i_comp)
 
 		# Return capped value
 		if abs(val) > self.yaw_pid_thresh:
@@ -103,13 +108,8 @@ class PIDcontroller2D(object):
 		###
 		# if between -1 and -0. take acos as it is 
 		# "     "    0.0 and 1.0 take acos + 3.14
-
-		if (ang < 0.0) and (ang >= -1.0):
-			res_ang = math.acos(-1.0*ang)*2.0
-		else:
-			res_ang = math.acos(-1.0*ang)*2.0
-
-			return res_ang
+		res_ang = math.acos(-1.0*ang)*2.0
+		return res_ang
 
 	def update(self, err_x):
 		self.err_x_cache = err_x
@@ -118,11 +118,14 @@ class PIDcontroller2D(object):
 
 	def get_rot_dir_n_diff(self, cur_yaw, tar_yaw):
 		# Convert to a unit vector in 2D coordinates with angle theta w.r.t x axis
-		# yaw : theta -- 0.0 : 0, 0.5 : 90, 1.0 : 180, 1.5 : 270, 2.0 : 360,
+		# yaw : theta -- 0.0 : 0, 0.5 : 90, 1.0 : 180, 1.5 : 270, 2.0 : 360
+		# yaw : theta -- 0.0 : 0, 1.57: 90, 3.14: 180, 4.71 :270, 2.0 : 6.28
 
 		# Get current and target yaw in radian in new coordinate system
 		# cyaw = (cur_yaw + 1.0)*math.pi
 		# tyaw = (tar_yaw + 1.0)*math.pi
+		print("@@@@@@@@@@@@ cur_yaw tar_yaw", cur_yaw, tar_yaw)
+
 		cyaw = cur_yaw
 		tyaw = tar_yaw
 
@@ -139,28 +142,21 @@ class PIDcontroller2D(object):
 
 		# If cross_pd is negative then turn right, else turn left
 		if cross_pd <= 0.0:
-		    return True, self.turnRdiff(cur_yaw, tar_yaw)
+		    return True, -1.0*self.turnRdiff(cur_yaw, tar_yaw) # Clockwise is negative
 		else:
 		    return False, self.turnLdiff(cur_yaw, tar_yaw)
 
 	def turnRdiff(self, cur_yaw, tar_yaw):
-	    # If both values are of same sign
-	    if np.sign(cur_yaw)*np.sign(tar_yaw) == 1.0:
-	        return tar_yaw - cur_yaw
-	    elif tar_yaw > 0.0 and cur_yaw < 0.0:
-	        return (-1.0 - cur_yaw)+(tar_yaw - 1.0)
-	    elif tar_yaw < 0.0 and cur_yaw > 0.0:
-	        return (0.0 - cur_yaw)+(tar_yaw)
+	    if cur_yaw > tar_yaw:
+	    	return cur_yaw - tar_yaw
+	    else:
+	    	return 2*math.pi - (tar_yaw - cur_yaw)
 
 	def turnLdiff(self, cur_yaw, tar_yaw):
-	    # If both values are of same sign
-	    if np.sign(cur_yaw)*np.sign(tar_yaw) == 1.0:
-	        return tar_yaw - cur_yaw
-	    elif tar_yaw > 0.0 and cur_yaw < 0.0:
-	        return (0.0 - cur_yaw)+(tar_yaw)
-	    elif tar_yaw < 0.0 and cur_yaw > 0.0:
-	        return (1.0 - cur_yaw)+(tar_yaw + 1.0)
-
+	   	if tar_yaw > cur_yaw:
+	   		return tar_yaw - cur_yaw
+	   	else:
+	   		return 2*math.pi - (cur_yaw - tar_yaw)
 
 # PID control only along tilt
 class PIDcontroller1D(object):

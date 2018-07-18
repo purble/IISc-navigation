@@ -16,7 +16,7 @@ class landing(object):
 		self.bridge = CvBridge()
 
 		# Initialize PIDcontroller object
-		self.pid_controller = PIDcontroller1D()
+		self.pid_controller = PIDcontroller2D()
 
 		# Initialize Shape Detector object
 		self.shape_detector = ShapeDetector()
@@ -165,8 +165,7 @@ class landing(object):
 			res_ang = math.acos(-1.0*ang)*2.0
 		else:
 			res_ang = math.acos(-1.0*ang)*2.0
-
-			return res_ang
+		return res_ang
 
 	### Fiducial_callback and it's utility functions
 
@@ -179,7 +178,7 @@ class landing(object):
 			if cur_id == rospy.get_param('/iisc_landing/landingpad_fiducial_id'):
 				rospy.set_param('/iisc_landing/distance2Lmarker', marker.pose.pose.position.z)
 
-			print("^^^^^^ Landing max dist threshold : landing pad distance : landing min dist threshold ", rospy.get_param('/iisc_landing/landing_max_dist_thresh'), " : ", rospy.get_param('/iisc_landing/landingpad_fiducial_id'), " : ", rospy.get_param('/iisc_landing/landing_min_dist_thresh'))
+			print("^^^^^^ Landing max dist threshold : landing pad distance : landing min dist threshold ", rospy.get_param('/iisc_landing/landing_max_dist_thresh'), " : ", rospy.get_param('/iisc_landing/distance2Lmarker'), " : ", rospy.get_param('/iisc_landing/landing_min_dist_thresh'))
 
 			# If already landingpad fiducial detected, return
 			if rospy.get_param('/landing_fiducial_detected'): return
@@ -203,6 +202,7 @@ class landing(object):
 
 	def odom_callback(self, data):
 		# Current yaw value
+		print ("**********1234567890*********")
 		cur_yaw = data.pose.pose.orientation.z
 		self.cur_yaw_rad = self.mag2radians(cur_yaw)
 

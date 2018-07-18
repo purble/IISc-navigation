@@ -174,31 +174,6 @@ class juncTurn(object):
         # Reset active_wayp to -1 i.e. look for next reference point
         self.active_wayp = -1
 
-    def getFilteredUWBdata(self, data):
-        #
-        # data format:
-        # {'header': .., 'anchors': [{'id': 0, 'dist': 3.5, 'mean': 0.4, 'offset': -0.6, 'var': 0.08}, {'id': 1, ...}, ..]}
-        #
-        dist = [None, None, None]
-        offset = [None, None, None]
-        mean = [None, None, None]
-        var = [None, None, None]
-
-        # Fill up the distances from three anchors of current active junction denoted by self.junc_idx
-        if len(data.anchors) > 0:
-            for anchor in data.anchors:
-                if anchor.id in self.anchor_ids[self.junc_idx]:
-                    idx = self.anchor_ids.index(anchor.id)
-                    dist[idx] = anchor.dist
-                    offset[idx] = anchor.offset
-                    mean[idx] = anchor.mean
-                    var[idx] = anchor.var
-
-        # Apply filtering algoirthm to sensor readings
-        x, y, z = self.filter_data(dist, offset, mean, var)  # ??? Yet to code
-
-        return x, y, z
-
     def check_if_near_ref_pt(self):
         nav_dir_ref = self.nav_dir_ref[self.junc_idx]
         for ix, ref in enumerate(nav_dir_ref):
@@ -270,26 +245,41 @@ class juncTurn(object):
 
     def get_yaw_vel_pid(self):
 
+        print("_____ active_wayp", self.active_wayp)
+
         # Target state
-        tar = self.junc_wayp_headings[self.junc_idx][self.ref_idx][self.active_wayp]
+        if self.active_wayp<0:
+            act_wp = 0
+        else:
+            act_wp = self.active_wayp
+        tar = self.junc_wayp_headings[self.junc_idx][self.ref_idx][act_wp]
+        print("//// ", tar)
         tar = self.mag2radians(tar)
 
         # Current state
         cur = self.cur_yaw_rad
 
+        print("//// ---- cur tar ", cur, tar)
+
         # Difference
         _, delta = self.get_rot_dir_n_diff(cur, tar)
 
+        print("delta >>>> ", delta)
+
         # Calculate the three PID components
         p_comp = self.yaw_p * delta
-        d_comp = self.yaw_d * delta-self.yaw_delta_cache
+        d_comp = self.yaw_d * (delta-self.yaw_delta_cache)
         self.yaw_delta_cache = delta
         self.yaw_iList.pop()
         self.yaw_iList = [delta] + self.yaw_iList
         i_comp = self.yaw_i * sum(self.yaw_iList)
 
+        print("....||.... ", self.yaw_i, self.yaw_iList, self.yaw_delta_cache, delta, self.yaw_d)
+
         # Caculate the final actuation value
-        val = (p_comp + d_comp + i_comp)*-1.0 # Clockwise is negative
+        val = (p_comp + d_comp + i_comp)
+
+        print("pid val ,,,, ", p_comp, i_comp, d_comp, val)
 
         # Return capped value
         if abs(val) > self.yaw_pid_thresh:
@@ -333,50 +323,44 @@ class juncTurn(object):
 		# if between -1 and -0. take acos as it is 
 		# "     "    0.0 and 1.0 take acos + 3.14
 
-    	if (ang < 0.0) and (ang >= -1.0):
-        	res_ang = math.acos(-1.0*ang)*2.0
-        else:
-        	res_ang = math.acos(-1.0*ang)*2.0
-
+    	res_ang = (math.acos(-1.0*ang))*2.0
        	return res_ang
 
     def get_pitch_roll(self, x_vel, y_vel):
 
-		# Get theta between x axis of triplet of anchors and curr_yaw
-		ang1 = self.diff_dirn_ref_yaw[self.junc_idx][self.ref_idx]
-		# ang2 = self.junc_calib_angles[self.junc_idx]
-		ang2 = self.cur_yaw_rad # I guess it is better to take actual yaw, since while turning at multiple wayps it may take some time to achieve the setpoint yaw
+        # Get theta between x axis of triplet of anchors and curr_yaw
+        ang1 = self.cur_yaw_rad # I guess it is better to take actual yaw, since while turning at multiple wayps it may take some time to achieve the setpoint yaw
+        ang2 = self.junc_calib_angles[self.junc_idx]
 
-		# Convert to radians
-		ang1 = self.mag2radians(ang1)
-		# ang2 = self.mag2radians(ang2) # Already converted to radians        
+        # Convert to radians
+        ang2 = self.mag2radians(ang2)
 
-		print("Angles ref_yaw junc_calib!!!!!", ang1, ang2)
+        print("Angles ref_yaw junc_calib!!!!!", ang1, ang2)
 
-		# Get anti-clockwise theta, from ang1 to ang2
-		theta = self.get_anticlockwise_theta(ang1, ang2)
-		print("$$$$ theta", theta)
+        # Get anti-clockwise theta, from ang1 to ang2
+        theta = self.get_clockwise_theta(ang1, ang2)
+        print("$$$$ theta", theta)
 
-		# Calculate the actuation velocities using this theta
-		pitch = x_vel*math.cos(theta) + y_vel*math.sin(theta)
-		roll = x_vel*math.sin(theta) - y_vel*math.cos(theta)
+        # Calculate the actuation velocities using this theta
+        pitch = x_vel*math.cos(theta) + y_vel*math.sin(theta)
+        roll = x_vel*math.sin(theta) - y_vel*math.cos(theta)
 
-		# Return capped velocities
-		ret_pitch, ret_roll = None, None
+        # Return capped velocities
+        ret_pitch, ret_roll = None, None
 
-		if abs(pitch) > self.pitch_pid_thresh:
-		    ret_pitch = self.pitch_pid_thresh * np.sign(pitch)
-		else:
-		    ret_pitch = pitch
+        if abs(pitch) > self.pitch_pid_thresh:
+            ret_pitch = self.pitch_pid_thresh * np.sign(pitch)
+        else:
+            ret_pitch = pitch
 
-		if abs(roll) > self.roll_pid_thresh:
-		    ret_roll = self.roll_pid_thresh * np.sign(roll)
-		else:
-		    ret_roll = roll
+        if abs(roll) > self.roll_pid_thresh:
+            ret_roll = self.roll_pid_thresh * np.sign(roll)
+        else:
+            ret_roll = roll
 
-		return ret_pitch, -1.0*ret_roll  # go right/left is negative/positive
+        return ret_pitch, -1.0*ret_roll  # go right/left is negative/positive
 
-    def get_anticlockwise_theta(self, ang1, ang2):
+    def get_clockwise_theta(self, ang1, ang2):
     	# ang1: Ref angle
     	# ang2: Jun Calib x-axis angle
     	if ang1 >= ang2:
@@ -449,6 +433,8 @@ class juncTurn(object):
         # Get current and target yaw in radian in new coordinate system
         # cyaw = (cur_yaw + 1.0)*math.pi
         # tyaw = (tar_yaw + 1.0)*math.pi
+        print(":::::: ", cur_yaw, tar_yaw)
+
         cyaw = cur_yaw
         tyaw = tar_yaw
 
@@ -463,29 +449,25 @@ class juncTurn(object):
         t = [tx, ty]
         cross_pd = np.cross(c, t)
 
+        print("::::: ", cross_pd)
+
         # If cross_pd is negative then turn right, else turn left
         if cross_pd <= 0.0:
-            return True, self.turnRdiff(cur_yaw, tar_yaw)
+            return True, -1.0*self.turnRdiff(cur_yaw, tar_yaw) # Clockwise is negative
         else:
             return False, self.turnLdiff(cur_yaw, tar_yaw)
 
     def turnRdiff(self, cur_yaw, tar_yaw):
-        # If both values are of same sign
-        if np.sign(cur_yaw)*np.sign(tar_yaw) == 1.0:
-            return tar_yaw - cur_yaw
-        elif tar_yaw > 0.0 and cur_yaw < 0.0:
-            return (-1.0 - cur_yaw)+(tar_yaw - 1.0)
-        elif tar_yaw < 0.0 and cur_yaw > 0.0:
-            return (0.0 - cur_yaw)+(tar_yaw)
+        if cur_yaw > tar_yaw:
+            return cur_yaw - tar_yaw
+        else:
+            return 2*math.pi - (tar_yaw - cur_yaw)
 
     def turnLdiff(self, cur_yaw, tar_yaw):
-        # If both values are of same sign
-        if np.sign(cur_yaw)*np.sign(tar_yaw) == 1.0:
+        if tar_yaw > cur_yaw:
             return tar_yaw - cur_yaw
-        elif tar_yaw > 0.0 and cur_yaw < 0.0:
-            return (0.0 - cur_yaw)+(tar_yaw)
-        elif tar_yaw < 0.0 and cur_yaw > 0.0:
-            return (1.0 - cur_yaw)+(tar_yaw + 1.0)
+        else:
+            return 2*math.pi - (cur_yaw - tar_yaw)
 
 
 def main(args):
@@ -506,59 +488,3 @@ if __name__ == '__main__':
 
     print("Hello world from IISc_junc_turning!")
     main(sys.argv)
-
-
-# 3
-
-# def fiducial_callback(self, data):
-
-# 		# If landing or rotating then ignore the fiducial markers
-# 		if rospy.get_param('/nav_state') == 0 or self.rotate: return
-# 		# Otherwise check if any pad in the self.pad_ids list is detected in current view
-
-# 		# Check if any marker is detected
-# 		if  len(data.markers)>0: # I think this is redundant since there will be no callback in the absence of any data
-# 			for marker in data.markers:
-# 				cur_id = marker.id
-# 				print("hello0")
-# 				if cur_id in self.pad_ids and cur_id not in self.done_pad_ids:
-# 					print("hello1")
-
-# 					if self.robust_detection():
-
-# 						if self.idx is None:
-# 							self.idx = self.pad_ids.index(cur_id)
-
-# 						cur_dist = marker.pose.pose.position.z
-
-# 						if cur_dist < self.pad_dist_turn[self.idx]:
-# 							self.rotate = True
-# 							self.goSt = False
-# 							self.done_pad_ids = [cur_id] + self.done_pad_ids
-# 							if self.pad_turn_dir[self.idx]:
-# 								self.turnR = True
-# 							else:
-# 								self.turnL = True
-# 						elif self.goSt:
-# 							print("hello4")
-# 							self.msg_pub('GoStraight', [0.0]*6)
-# 						elif cur_dist < self.pad_dist_det[self.idx]:
-# 							print("hello5")
-# 							rospy.set_param('/nav_state', 2)
-# 							self.goSt = True
-
-# 					break
-
-# 	def robust_detection(self, reset=False):
-
-# 		if reset:
-# 			self.junctionTurning_fiducial_detected_list = [0]*rospy.get_param('/iisc_junc_turning/junctionTurning_fiducial_detected_list_size')
-# 		elif rospy.get_param('/nav_state') == 2:
-# 			return True
-# 		else:
-# 			self.junctionTurning_fiducial_detected_list.pop()
-# 			self.junctionTurning_fiducial_detected_list = [1] + self.junctionTurning_fiducial_detected_list
-# 			if sum(self.junctionTurning_fiducial_detected_list) > self.junctionTurning_fiducial_detection_thresh:
-# 				return True
-# 			else:
-# 				return False
